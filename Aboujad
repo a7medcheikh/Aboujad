@@ -1,0 +1,81 @@
+
+import requests
+
+# Remplacez YOUR_BOT_TOKEN par le jeton d'accès de votre bot
+BOT_TOKEN = "6585437971:AAH6_1FASuimvDgmmRoMStPmUK8YbCACJnc"
+
+# Message de bienvenue par défaut
+DEFAULT_WELCOME_MESSAGE = "مرحبا، هذا البوت قد يساعدك في حساب الجمل. أرسل الأحرف وسيقوم البوت بحساب المجموع."
+
+# Variable pour stocker le message de bienvenue personnalisé
+welcome_message = DEFAULT_WELCOME_MESSAGE
+
+# Définir les valeurs des variables
+variables = {'إ': 1, 'ا': 1, 'أ': 1, 'ب': 2, 'ج': 3, 'د': 4, 'هـ': 5,'ه':5, 'و': 6, 'ز': 7, 'ح': 8, 'ط': 9, 'ي': 10,
+              'ك': 20, 'ل': 30, 'م': 40, 'ن': 50, 'ص': 60, 'ع': 70, 'ف': 80, 'ض': 90, 'ق': 100,
+              'ر': 200, 'س': 300, 'ت': 400, 'ث': 500, 'خ': 600, 'ذ': 700, 'ظ': 800, 'غ': 900, 'ش': 1000,' ':0}
+
+# Fonction pour calculer la somme des lettres
+def calculate_sum(letters):
+    total = 0
+    for letter in letters:
+        if letter in variables:
+            total += variables[letter]
+        else:
+            return "الرجاء مراجعة كتابة الحروف !"
+    return total
+
+# Gestionnaire de commande pour gérer les messages
+def handle_message(update):
+    message = update["message"]["text"].lower()
+    total = calculate_sum(message)
+    chat_id = update["message"]["chat"]["id"]
+    send_message(chat_id, f" {total}")
+
+# Fonction pour envoyer un message
+def send_message(chat_id, text):
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    data = {"chat_id": chat_id, "text": text}
+    response = requests.post(url, json=data)
+    return response.json()
+
+# Fonction pour définir le message de bienvenue personnalisé
+def set_welcome_message(update):
+    global welcome_message
+    chat_id = update["message"]["chat"]["id"]
+    # Extraire le nouveau message de bienvenue de la commande
+    new_welcome_message = update["message"]["text"].replace("/set_welcome_message ", "")
+    welcome_message = new_welcome_message
+    send_message(chat_id, "مرحبا، هاذ الروبوت قد يساعدك في  حساب الجمل. ارسل العدد حروفا وسيجيبك أرقاما")
+
+# Fonction pour gérer la commande /start
+def start_command(update):
+    chat_id = update["message"]["chat"]["id"]
+    send_message(chat_id, welcome_message)
+
+# Fonction principale pour démarrer le bot
+def main():
+    offset = None
+    while True:
+        updates = get_updates(offset)
+        if updates:
+            for update in updates:
+                if "message" in update and "text" in update["message"]:
+                    message_text = update["message"]["text"]
+                    if message_text.startswith("/set_welcome_message"):
+                        set_welcome_message(update)
+                    elif message_text == "/start":
+                        start_command(update)
+                    else:
+                        handle_message(update)
+                    offset = update["update_id"] + 1
+
+# Fonction pour obtenir les mises à jour
+def get_updates(offset):
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/getUpdates"
+    params = {"offset": offset, "timeout": 30}
+    response = requests.get(url, params=params)
+    return response.json()["result"]
+
+if __name__ == "__main__":
+    main()
